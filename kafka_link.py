@@ -1,6 +1,5 @@
 from kafka.errors import KafkaError
 from kafka import KafkaProducer
-from datetime import datetime
 import json
 import copy
 
@@ -38,20 +37,20 @@ class KafkaLink:
         except Exception as e:
             print('Unable to publish to Kafka server: ', e)
 
-    def push_all_to_server(self, docs):
-        for success, info in parallel_bulk(self.es, self._pre_process_docs(docs)):
-            if not success:
-                print('Push failed: ', info)
+    #def push_all_to_server(self, docs):
+    #    for success, info in parallel_bulk(self.es, self._pre_process_docs(docs)):
+    #        if not success:
+    #            print('Push failed: ', info)
 
 
-    def _pre_process_docs(self, docs):
-        for doc in docs:
-            yield {
-                "ts": timestamp,
-                "ansible_name": name, 
-                "host_name": hostname, 
-                "domain": domain, 
-                "ip": ip, 
-                "mac": mac, 
-                "team": team
-            }
+    #def _pre_process_docs(self, docs):
+    #    for doc in docs:
+    #        yield {
+    #            "ts": timestamp,
+    #            "ansible_name": name, 
+    #            "host_name": hostname, 
+    #            "domain": domain, 
+    #            "ip": ip, 
+    #            "mac": mac, 
+    #            "team": team
+    #        }
