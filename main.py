@@ -71,6 +71,16 @@ if __name__ == '__main__':
                         choices=['json', 'yaml'],
                         help='File format for the dumpfile. Default: json')
     # Other args
+    parser.add_argument('--stdout', '--console',
+                        dest='stdout',
+                        action='store_true',
+                        default=False, 
+                        help='Enables logging output to console')
+    parser.add_argument('--pretty',
+                        dest='stdout_pretty',
+                        action='store_true',
+                        default=False, 
+                        help='Make console output format pretty')
     parser.add_argument('-v', '--verbose',
                         dest='verbose',
                         action='store_true',
@@ -83,7 +93,7 @@ if __name__ == '__main__':
     es_enabled = True if args.es_host else False
     kafka_enabled = True if args.kafka_host else False
     file_enabled = True if args.file_path else False
-    stdout_enabled = True if not (es_enabled or kafka_enabled or file_enabled) else False
+    stdout_enabled = True if not (es_enabled or kafka_enabled or file_enabled) or args.stdout else False
 
     # Conditional imports to avoid unnecessary dependency requirements
     if es_enabled:
@@ -92,7 +102,7 @@ if __name__ == '__main__':
         from kafka_link import KafkaLink
     if file_enabled:
         from file_link import FileLink
-    if stdout_enabled:
+    if stdout_enabled and args.stdout_pretty:
         import pprint
         pp = pprint.PrettyPrinter(indent=2)
 
@@ -158,7 +168,10 @@ if __name__ == '__main__':
             if file_enabled:
                 file_link.write(vm_info)
             if stdout_enabled:
-                pp.pprint(vm_info)
+                if args.stdout_pretty:
+                    pp.pprint(vm_info)
+                else:
+                    print(vm_info)
 
         except Exception as e:
             print('Error occurred: ', e)
