@@ -16,6 +16,10 @@ if __name__ == '__main__':
                         default=443,
                         action='store',
                         help='vSphere port to connect on. Default: 443')
+    parser.add_argument('-nossl', '--disable-ssl-verification',
+                        required=False,
+                        action='store_true',
+                        help='Disable ssl host certificate verification')
     parser.add_argument('-u', '--user',
                         required=True,
                         action='store',
@@ -24,10 +28,11 @@ if __name__ == '__main__':
                         required=False,
                         action='store',
                         help='Password to use when connecting to vSphere. Prompts for password if not provided.')
-    parser.add_argument('-nossl', '--disable-ssl-verification',
+    parser.add_argument('--password-file',
+                        dest='password_file', 
                         required=False,
-                        action='store_true',
-                        help='Disable ssl host certificate verification')
+                        action='store',
+                        help='Read password from a file. Mind the permissions of this file. Prompts for password if not provided.')
     parser.add_argument('-f', '--folder',
                         required=True,
                         action='store',
@@ -41,7 +46,7 @@ if __name__ == '__main__':
                         dest='index',
                         action='store',
                         default='vmware-assets', 
-                        help='Elasticsearch index to push data on')
+                        help='Elasticsearch index name')
     # Kafka args
     parser.add_argument('--kafka-topic', 
                         dest='kafka_topic', 
@@ -106,12 +111,15 @@ if __name__ == '__main__':
         import pprint
         pp = pprint.PrettyPrinter(indent=2)
 
-
     # Check password
-    if not args.password:
+    if not (args.password or args.password_file):
         args.password = getpass(
             prompt='Please enter password for host %s and user %s: '
                    % (args.vhost, args.user))
+
+    if args.password_file:
+        with open(args.password_file, 'r') as file:
+            args.password = file.read().replace('\n', '')
 
     # Init vCenter obj
     vm_vcenter = VMvCenter(host=args.vhost,
