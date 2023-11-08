@@ -77,12 +77,13 @@ class VMvCenter:
 
         # Get network info
         for nic in virtual_machine.guest.net:
-            nic_info = {
-                'connected': nic.connected,
-                'mac': nic.macAddress,
-                'IP': [''.join([adr.ipAddress, '/', str(adr.prefixLength)]) for adr in nic.ipConfig.ipAddress],
-            }
-            vm_info['nic'].append(nic_info)
+            if nic.ipConfig is not None:
+                nic_info = {
+                    'connected': nic.connected,
+                    'mac': nic.macAddress,
+                    'IP': [''.join([adr.ipAddress, '/', str(adr.prefixLength)]) for adr in nic.ipConfig.ipAddress],
+                }
+                vm_info['nic'].append(nic_info)
 
         return vm_info
 

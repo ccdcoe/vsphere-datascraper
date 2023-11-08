@@ -4,6 +4,7 @@ import argparse
 from getpass import getpass
 from vm_vcenter import VMvCenter
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Data and IP scraper from VMware vCenter. Supports output to Kafka, Elasticsearch, file or stdout. \nNote, current implementation selects the first "Datacenter" entity in the vCenter.')
     # vSphere args
@@ -75,6 +76,26 @@ if __name__ == '__main__':
                         default='json',
                         choices=['json', 'yaml'],
                         help='File format for the dumpfile. Default: json')
+    # Wise output args
+    parser.add_argument('-w', '--wise', 
+                        dest='wise_path', 
+                        help='Output Arkime WISE compatible JSON data dump.')
+    parser.add_argument('--wise-full-dump', 
+                        dest='wise_full_mode', 
+                        action='store_true',
+                        default=False, 
+                        help='Enable WISE full output dump (adds fields for MAC, OS, hostname).')
+    # Duplicate IP and hostname detection
+    parser.add_argument('-dupl', '--duplicates',
+                        dest='duplicate_detection',
+                        action='store_true',
+                        default=False, 
+                        help='Enables duplicate hostname and IP address detection. Useful for debugging.')
+    parser.add_argument('--duplicate-mode',
+                        dest='duplicate_mode',
+                        default="all", 
+                        help='Select duplicate detection mode. Valid values: "ip", "hostname", "all". Default: "all".')
+
     # Other args
     parser.add_argument('--stdout', '--console',
                         dest='stdout',
@@ -98,7 +119,9 @@ if __name__ == '__main__':
     es_enabled = True if args.es_host else False
     kafka_enabled = True if args.kafka_host else False
     file_enabled = True if args.file_path else False
-    stdout_enabled = True if not (es_enabled or kafka_enabled or file_enabled) or args.stdout else False
+    wise_enabled = True if args.wise_path else False
+    stdout_enabled = True if not (es_enabled or kafka_enabled or file_enabled or wise_enabled) or args.stdout else False
+    duplicate_detection = True if args.duplicate_detection else False
 
     # Conditional imports to avoid unnecessary dependency requirements
     if es_enabled:
@@ -107,9 +130,13 @@ if __name__ == '__main__':
         from kafka_link import KafkaLink
     if file_enabled:
         from file_link import FileLink
+    if wise_enabled:
+        from wise_link import WiseLink
     if stdout_enabled and args.stdout_pretty:
         import pprint
         pp = pprint.PrettyPrinter(indent=2)
+    if duplicate_detection:
+        from duplicate_detection import DuplicateDetection
 
     # Check password
     if not (args.password or args.password_file):
@@ -153,6 +180,19 @@ if __name__ == '__main__':
         if args.verbose:
             print('Opening ' + args.file_path + ' for writing.')
         file_link = FileLink(file_path=args.file_path, file_format=args.file_format)
+    
+    # Init WiseLink obj
+    if wise_enabled:
+        if args.verbose:
+            print('Opening ' + args.wise_path + ' for writing.')
+        wise_link = WiseLink(file_path=args.wise_path, wise_full_mode=args.wise_full_mode)
+    
+    # Load duplicate detection module
+    if duplicate_detection:
+        if args.verbose:
+            print('Enabling duplicate hostname and IP detection')
+        dupl = DuplicateDetection(mode=args.duplicate_mode)
+
 
     # Initiate connection
     try:
@@ -175,14 +215,23 @@ if __name__ == '__main__':
                 kafka_link.push_to_server(vm_info)
             if file_enabled:
                 file_link.write(vm_info)
+            if wise_enabled:
+                wise_link.append(vm_info)
             if stdout_enabled:
                 if args.stdout_pretty:
                     pp.pprint(vm_info)
                 else:
                     print(vm_info)
 
+            if duplicate_detection:
+                dupl.find_duplicates(vm_info)
+
         except Exception as e:
             print('Error occurred: ', e)
 
+    if wise_enabled:
+        wise_link.write()
+    if duplicate_detection:
+        dupl.print_duplicates()
     if args.verbose:
         print('Done! Collected info from ' + str(counter) + ' hosts.')
