@@ -21,10 +21,10 @@ class WiseLink:
                 template["os"] = info.get("os") if info.get("os") != None else "Unknown"
                 template["hostname"] = info.get("host_name") if info.get("host_name") != None else "Unknown"
                 template["mac"] = nicinfo.get("mac", "Unknown")
-            for ip in nicinfo.get("IP", "Unknown"):
+            for ip in nicinfo.get("IP", []):
                 if len(ip) > 0 and ip is not None:
                     template["ip"] = ip
-                    self.wise_data.append(template)
+                    self.wise_data.append(template.copy())
 
     def write(self):
         json.dump(self.wise_data, self.fd)
