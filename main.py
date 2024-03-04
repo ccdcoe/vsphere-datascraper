@@ -39,10 +39,10 @@ if __name__ == '__main__':
                         action='store',
                         help='Path to the VM folder to scrape (recursively). Do not prefix the path with /.')
     # Elasticsearch args
-    parser.add_argument('-eh', '--es-host',
-                        dest='es_host', 
-                        action='store',
-                        help='Elasticsearch service address to connect to')
+    parser.add_argument('-eh', '--es-hosts',
+                        dest='es_hosts', 
+                        nargs = '+', 
+                        help='Elasticsearch host address(es). If you want to send data to multiple ES clusters, separate the addresses with a whitespace.')
     parser.add_argument('-i', '--index',
                         dest='index',
                         action='store',
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     # Get args
     args = parser.parse_args()
-    es_enabled = True if args.es_host else False
+    es_enabled = True if args.es_hosts else False
     kafka_enabled = True if args.kafka_host else False
     file_enabled = True if args.file_path else False
     wise_enabled = True if args.wise_path else False
@@ -157,12 +157,15 @@ if __name__ == '__main__':
                            folder_path=args.folder)
 
     # Init ElasticLink obj
+    ela_links = list()
     if es_enabled:
-        if args.verbose:
-            print('Connecting to ES host:' + str(args.es_host))
-        ela_link = ElasticLink(ela_host=args.es_host,
-                               ela_index=args.index)
-        ela_link.connect()
+        for es_host in args.es_hosts:
+            if args.verbose:
+                print('Connecting to ES host: ' + str(es_host))
+            ela_links.append(ElasticLink(ela_host=es_host, ela_index=args.index))
+
+        for ela_link in ela_links:
+            ela_link.connect()
 
     # Init KafkaLink obj
     if kafka_enabled:
@@ -193,7 +196,6 @@ if __name__ == '__main__':
             print('Enabling duplicate hostname and IP detection')
         dupl = DuplicateDetection(mode=args.duplicate_mode)
 
-
     # Initiate connection
     try:
         vm_vcenter.connect()
@@ -210,7 +212,8 @@ if __name__ == '__main__':
         try:
             vm_info = vm_vcenter.get_vm_info(vm)
             if es_enabled:
-                ela_link.push_to_server(vm_info)
+                for ela_link in ela_links:
+                    ela_link.push_to_server(vm_info)
             if kafka_enabled:
                 kafka_link.push_to_server(vm_info)
             if file_enabled:
